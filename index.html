@@ -118,8 +118,8 @@
 
 <div class="nav">
   <div class="nav-left">
-    <div class="nav-title">TC Acoustic — Store Intelligence</div>
-    <div class="nav-sub">Hong Kong · 36 stores · Ginger Kiang</div>
+    <div class="nav-title">TC Acoustic — HK Store Intelligence</div>
+    <div class="nav-sub">Hong Kong · 36 stores · Ginger Kiang · Q1 W1–W11 (30/12/25–15/03/26)</div>
   </div>
   <div class="nav-right">
     <span class="nav-date" id="gen-date"></span>
@@ -130,7 +130,7 @@
 <div class="main">
 
   <!-- Market Overview -->
-  <div class="section-label">Market Overview</div>
+  <div class="section-label">Market Overview — Q1 W1–W11 (30/12/25–15/03/26)</div>
   <div class="overview-block">
     <div class="overview-top">
       <div class="ov-stat">
@@ -192,7 +192,7 @@
   </div>
 
   <!-- Store cards -->
-  <div class="section-label">All Stores</div>
+  <div class="section-label">All Stores — Q1 W1–W11 (30/12/25–15/03/26)</div>
   <div class="controls">
     <div class="search-wrap">
       <span class="search-icon">⌕</span>
@@ -312,7 +312,7 @@ function openDP(name){
   selectedStore=name;
   const r=DATA.find(x=>x.store_name===name);
   document.getElementById('dp-name').textContent=name;
-  document.getElementById('dp-meta').textContent=`${r.country} · ${r.tier} · CM: ${r.cm} · ${r.total_visits} visit${r.total_visits!==1?'s':''} · Last: ${r.last_visit} (${r.days_ago<0?'upcoming':r.days_ago+'d ago'})`;
+  document.getElementById('dp-meta').textContent=`${r.country} · ${r.tier} · CM: ${r.cm} · ${r.total_visits} visit${r.total_visits!==1?'s':''} · Last: ${r.last_visit} (${r.days_ago<0?'upcoming':r.days_ago+'d ago'}) · Q1 W1–W13`;
 
   const momC=MomClass[r.momentum], momI=MomIcon[r.momentum];
 
@@ -359,6 +359,7 @@ function copyBrief(name){
   const r=DATA.find(x=>x.store_name===name);
   const text=`PRE-CALL BRIEF — ${name}
 Date: ${new Date().toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'})}
+Data period: Q1 W1–W11 (30/12/25–15/03/26)
 CM: ${r.cm} · Last visit: ${r.last_visit} · ${r.total_visits} visits on record
 Overall: ${r.overall_health.toUpperCase()}
 
