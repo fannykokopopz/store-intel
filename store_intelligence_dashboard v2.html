@@ -1,0 +1,539 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TC Acoustic — HK Store Intelligence</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, 'Helvetica Neue', Helvetica, Arial, sans-serif; background: #F5F5F7; color: #1D1D1F; min-height: 100vh; }
+
+  /* Top nav */
+  .nav { background: rgba(255,255,255,0.85); backdrop-filter: blur(20px); border-bottom: 0.5px solid #D2D2D7; padding: 0 24px; height: 52px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 100; }
+  .nav-title { font-size: 17px; font-weight: 600; letter-spacing: -0.3px; color: #1D1D1F; }
+  .nav-sub { font-size: 12px; color: #6E6E73; margin-top: 1px; }
+  .nav-badge { font-size: 11px; font-weight: 500; background: #FF3B30; color: white; padding: 2px 8px; border-radius: 10px; }
+
+  /* Main layout */
+  .main { max-width: 1200px; margin: 0 auto; padding: 24px 20px; }
+
+  /* Summary cards */
+  .summary-row { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; margin-bottom: 24px; }
+  .sum-card { background: white; border-radius: 12px; padding: 16px; border: 0.5px solid #D2D2D7; }
+  .sum-card .num { font-size: 28px; font-weight: 600; letter-spacing: -1px; color: #1D1D1F; }
+  .sum-card .lbl { font-size: 12px; color: #6E6E73; margin-top: 2px; }
+  .sum-card.alert .num { color: #FF3B30; }
+  .sum-card.warn .num { color: #FF9500; }
+  .sum-card.good .num { color: #34C759; }
+
+  /* Controls */
+  .controls { display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; align-items: center; }
+  .search-wrap { flex: 1; min-width: 200px; position: relative; }
+  .search-wrap input { width: 100%; padding: 8px 12px 8px 34px; border: 0.5px solid #D2D2D7; border-radius: 8px; font-size: 14px; background: white; color: #1D1D1F; font-family: inherit; }
+  .search-wrap input:focus { outline: none; border-color: #0071E3; }
+  .search-icon { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: #6E6E73; font-size: 14px; pointer-events: none; }
+  .filter-chip { font-size: 12px; font-weight: 500; padding: 6px 14px; border-radius: 20px; border: 0.5px solid #D2D2D7; background: white; color: #6E6E73; cursor: pointer; transition: all .15s; white-space: nowrap; font-family: inherit; }
+  .filter-chip.active { background: #0071E3; border-color: #0071E3; color: white; }
+  .filter-chip:hover:not(.active) { background: #F5F5F7; }
+  .sort-select { font-size: 12px; padding: 6px 10px; border: 0.5px solid #D2D2D7; border-radius: 8px; background: white; color: #1D1D1F; font-family: inherit; cursor: pointer; }
+
+  /* Store grid */
+  .store-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 14px; }
+
+  /* Store card */
+  .store-card { background: white; border-radius: 14px; border: 0.5px solid #D2D2D7; overflow: hidden; cursor: pointer; transition: all .2s; }
+  .store-card:hover { border-color: #0071E3; box-shadow: 0 4px 20px rgba(0,113,227,0.1); transform: translateY(-1px); }
+  .store-card.selected { border-color: #0071E3; border-width: 1.5px; }
+
+  .card-header { padding: 14px 16px 10px; display: flex; justify-content: space-between; align-items: flex-start; }
+  .card-store-name { font-size: 13px; font-weight: 600; color: #1D1D1F; line-height: 1.3; flex: 1; padding-right: 8px; }
+  .health-badge { font-size: 10px; font-weight: 600; padding: 3px 9px; border-radius: 10px; white-space: nowrap; letter-spacing: 0.3px; flex-shrink: 0; }
+  .hb-strong, .hb-healthy { background: #D1FAE5; color: #065F46; }
+  .hb-watch { background: #FEF3C7; color: #92400E; }
+  .hb-at-risk { background: #FEE2E2; color: #991B1B; }
+
+  .card-meta { padding: 0 16px 10px; font-size: 11px; color: #6E6E73; }
+
+  .card-signals { padding: 0 16px 12px; display: flex; gap: 6px; flex-wrap: wrap; }
+  .sig { font-size: 10px; font-weight: 500; padding: 3px 8px; border-radius: 8px; }
+  .sig-red { background: #FEE2E2; color: #991B1B; }
+  .sig-amber { background: #FEF3C7; color: #92400E; }
+  .sig-green { background: #D1FAE5; color: #065F46; }
+  .sig-blue { background: #DBEAFE; color: #1E40AF; }
+  .sig-purple { background: #EDE9FE; color: #5B21B6; }
+  .sig-gray { background: #F3F4F6; color: #374151; }
+
+  .card-divider { height: 0.5px; background: #F2F2F7; margin: 0 16px; }
+
+  .card-insight { padding: 10px 16px 14px; }
+  .insight-label { font-size: 10px; font-weight: 600; color: #6E6E73; letter-spacing: 0.5px; text-transform: uppercase; margin-bottom: 4px; }
+  .insight-text { font-size: 12px; color: #3C3C43; line-height: 1.5; }
+
+  .card-loading { padding: 14px 16px; display: flex; align-items: center; gap: 10px; }
+  .spinner { width: 16px; height: 16px; border: 1.5px solid #D2D2D7; border-top-color: #0071E3; border-radius: 50%; animation: spin .8s linear infinite; flex-shrink: 0; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .loading-text { font-size: 12px; color: #6E6E73; }
+
+  /* Detail panel */
+  .detail-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 200; }
+  .detail-overlay.open { display: flex; align-items: flex-end; justify-content: flex-end; }
+  @media (min-width: 700px) { .detail-overlay.open { align-items: stretch; } }
+
+  .detail-panel { background: white; width: 100%; max-width: 460px; height: 100%; overflow-y: auto; display: flex; flex-direction: column; animation: slideIn .25s ease; }
+  @keyframes slideIn { from { transform: translateX(40px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+
+  .dp-header { padding: 20px 20px 16px; border-bottom: 0.5px solid #D2D2D7; position: sticky; top: 0; background: white; z-index: 10; }
+  .dp-close { float: right; font-size: 22px; color: #6E6E73; cursor: pointer; margin-top: -3px; line-height: 1; }
+  .dp-close:hover { color: #1D1D1F; }
+  .dp-store { font-size: 16px; font-weight: 600; color: #1D1D1F; padding-right: 30px; }
+  .dp-meta { font-size: 12px; color: #6E6E73; margin-top: 4px; }
+
+  .dp-body { padding: 16px 20px; flex: 1; }
+  .dp-section { margin-bottom: 20px; }
+  .dp-section-title { font-size: 11px; font-weight: 600; color: #6E6E73; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; }
+  .dp-item { font-size: 13px; color: #1D1D1F; padding: 7px 0; border-bottom: 0.5px solid #F2F2F7; line-height: 1.5; }
+  .dp-item:last-child { border-bottom: none; }
+  .dp-item.empty { color: #6E6E73; font-style: italic; }
+
+  .dp-highlight { background: #F5F5F7; border-radius: 10px; padding: 12px; margin-bottom: 16px; }
+  .dp-highlight .label { font-size: 10px; font-weight: 600; color: #6E6E73; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
+  .dp-highlight .value { font-size: 13px; color: #1D1D1F; line-height: 1.5; }
+
+  .dp-actions { padding: 16px 20px; border-top: 0.5px solid #D2D2D7; display: flex; flex-direction: column; gap: 8px; }
+  .dp-btn { font-size: 13px; font-weight: 500; padding: 10px 16px; border-radius: 8px; border: 0.5px solid #D2D2D7; background: #F5F5F7; color: #1D1D1F; cursor: pointer; font-family: inherit; transition: background .15s; text-align: left; }
+  .dp-btn:hover { background: #E8E8ED; }
+  .dp-btn-primary { background: #0071E3; color: white; border-color: #0071E3; }
+  .dp-btn-primary:hover { background: #0077ED; }
+
+  .empty-state { text-align: center; padding: 60px 20px; color: #6E6E73; font-size: 14px; }
+
+  /* Momentum arrows */
+  .mom-up { color: #34C759; font-weight: 600; }
+  .mom-flat { color: #FF9500; }
+  .mom-down { color: #FF3B30; font-weight: 600; }
+
+  @media (max-width: 600px) {
+    .summary-row { grid-template-columns: repeat(3, 1fr); }
+    .store-grid { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<div class="nav">
+  <div>
+    <div class="nav-title">TC Acoustic — Store Intelligence</div>
+    <div class="nav-sub">Hong Kong · Powered by Claude AI</div>
+  </div>
+  <div id="alert-badge" class="nav-badge" style="display:none"></div>
+</div>
+
+<div class="main">
+  <div class="summary-row" id="summary-row">
+    <div class="sum-card"><div class="num" id="s-total">36</div><div class="lbl">Total stores</div></div>
+    <div class="sum-card alert"><div class="num" id="s-risk">—</div><div class="lbl">At risk</div></div>
+    <div class="sum-card warn"><div class="num" id="s-watch">—</div><div class="lbl">Watch</div></div>
+    <div class="sum-card good"><div class="num" id="s-healthy">—</div><div class="lbl">Healthy / Strong</div></div>
+    <div class="sum-card"><div class="num" id="s-analysed">0</div><div class="lbl">Analysed</div></div>
+  </div>
+
+  <div class="controls">
+    <div class="search-wrap">
+      <span class="search-icon">⌕</span>
+      <input type="text" id="search-input" placeholder="Search store..." oninput="applyFilters()">
+    </div>
+    <button class="filter-chip active" onclick="setFilter('all',this)">All</button>
+    <button class="filter-chip" onclick="setFilter('at-risk',this)">🔴 At risk</button>
+    <button class="filter-chip" onclick="setFilter('watch',this)">🟡 Watch</button>
+    <button class="filter-chip" onclick="setFilter('healthy',this)">🟢 Healthy</button>
+    <button class="filter-chip" onclick="setFilter('training',this)">📚 Training gap</button>
+    <button class="filter-chip" onclick="setFilter('competitor',this)">⚡ Competitor</button>
+    <select class="sort-select" id="sort-select" onchange="applyFilters()">
+      <option value="risk">Sort: Risk first</option>
+      <option value="recent">Sort: Most recent</option>
+      <option value="stale">Sort: Least visited</option>
+      <option value="alpha">Sort: A–Z</option>
+    </select>
+  </div>
+
+  <div class="store-grid" id="store-grid"></div>
+  <div class="empty-state" id="empty-state" style="display:none">No stores match this filter.</div>
+</div>
+
+<!-- Detail panel overlay -->
+<div class="detail-overlay" id="detail-overlay" onclick="closeDetail(event)">
+  <div class="detail-panel" id="detail-panel">
+    <div class="dp-header">
+      <span class="dp-close" onclick="closeDetailPanel()">×</span>
+      <div class="dp-store" id="dp-store-name"></div>
+      <div class="dp-meta" id="dp-meta"></div>
+    </div>
+    <div class="dp-body" id="dp-body"></div>
+    <div class="dp-actions" id="dp-actions"></div>
+  </div>
+</div>
+
+<script>
+// ── Raw store data from CSV ──────────────────────────────────────────────────
+const API_KEY = "YOUR_ANTHROPIC_API_KEY_HERE";
+const STORES_RAW = [{"store": "Fortress @ 613 New Town Plaza (Shatin)", "country": "HK", "tier": "Tier 1", "cm": "Ginger Kiang", "total_visits": 10, "last_visit": "25-Mar-2026", "days_ago": -7, "notes": [{"date": "28-Jan-2026", "text": "Outlet name: TechLife New Town Plaa\nClocked in on SVA:  yes\nMusic playing:\u2705\n\n1. Good news\nStaff sold an Era 300 ytd \n\n2. Insights/Opportunities\nStaff shared that recently is normal but no out standing brand \nShared that Spotify new update can help him to catch customers to buy sonos and why \nbuzz about CNY promo headphone / speaker even\nTrained on ace  beam and era100 \nAsked staff to hard push era100 and ace especially this promo period \nTrained on the Sonos system feature to a new Part time \nSe"}, {"date": "04-Feb-2026", "text": "Outlet name: techlife New Town Plaza\nClocked in on SVA:  yes\nMusic playing:\u2705\n\n1. Good news\nStaff are very helpful and keep pushing on Sonos as they keep sharing diff stories \n\n2. Insights/Opportunities\nStaff shared that recently the sales is normal\nBut staff also shared that she got more customers has heard Sonos before but not a current user \nShared sales stories with Staff \nAnswered some questions about soundbar from staff \nTrained Era 100 Arc ultra hyped that CNY promo is extended and V day i"}, {"date": "11-Feb-2026", "text": "Outlet name: TL New Town Plaza \nClocked in on SVA:  yes\nMusic playing:\u2705\n\n1. Good news\nStaff love using our speaker to play music \n \n2. Insights/Opportunities\nStaff shared that the sales recently are low  \nStaff shared that speaker sales are low but they sometimes there are Chinese customers will target to buy Marshall back to China and its around 3-4 a week \nHype of V day promo \nShared few sales stories Trained on Move 2 shared that what kind of custumer are fit for Move 2 \n\n4.training   \nMove 2"}, {"date": "11-Mar-2026", "text": "Outlet name: TL New Town Plaza \nClocked in on SVA:  yes\nMusic playing:\u2705\n\n1. Good news\nI sold a Roam today and staff is excited about the Sonos Play \n\n2. Insights/Opportunities\nStaff shared that their crowd on Sat and Sun mainly from 3-7 \nStaff shared that they got 1-2 speaker per day\nShared sales stories of ace and trained on ace\nShared sales stories of Roam 2 just happened\nTrained on multi room with Play \nStaff is very excited about we got new products and he alr planning the location for the d"}, {"date": "25-Mar-2026", "text": "Outlet name: TL New Town Plaza\nClocked in on SVA:  yes\nMusic playing:\u2705\n\n1. Good news\nA pt staff impressed by arc ultra, he tried Arc before\n\n2. Insights/Opportunities\nStaff shared recently bose sales dropped and Marshall sales is normal, and our sales has grow a bit \nStaff shared overall audio sales are not good \nServed a customer, he tried Ace \nShared sales stories to encourage them to keep selling and earn return customers \nTrained on Arc ultra era300  \nA ex techlife pt staff aiming to buy era"}]}, {"store": "Fortress @ 469 Festival Walk", "country": "HK", "tier": "Tier 2", "cm": "Ginger Kiang", "total_visits": 4, "last_visit": "11-Mar-2026", "days_ago": 7, "notes": [{"date": "14-Jan-2026", "text": "Outlet name: TL Festival walk \nClocked in on SVA:  yes\nMusic playing:\u2705 \n\n1. Good news\nStaff shared that roam 2 is selling good recently \n\n2. Insights/Opportunities\nStaff shared that their sales is not very good \nShared sales story about roam2 and we are doing so good , staff are very interested and asking her bose to give them stocks \nShared some sales story and shared about customer recently are not very price concern\nShared about how to present dolby atmos and trained on Ace \n\n3. Brand Executi"}, {"date": "27-Jan-2026", "text": "Outlet name: TechLife Festival walk\nClocked in on SVA:  yes\nMusic playing:\u2705\n\n1. Good news\nStaff can catch the training well and they are very faithful to sell\n\n2. Insights/Opportunities\nStaff shared that recently is normal \nStaff share that last week got custumers to try on Sonos \nbuzz about CNY promo and shared about it is a chance that custumer to buy deco at home or buy a speaker for movie or music \n Shared that Valentine's Day is near by and it is a google option for gifting partner a speake"}, {"date": "02-Mar-2026", "text": "Outlet name: TL Telford\nClocked in on SVA:  yes\nMusic playing:\u2705\n\n1. Good news\nStaff sold Beam last week \n2. Insights/Opportunities\nStaff shared that audio sales are low \nShared few sales stories for encouraging them to sell Sonos and build returns customers \nTrained on Roam 2 \n\n4.training   \n\nRoam 2 pt yee\n \n\n5. Follow up build relaionship"}, {"date": "11-Mar-2026", "text": "Outlet name: TL Festival walk \nClocked in on SVA:  yes\nMusic playing:\u2705\n\n1. Good news\nStaff said she can give us space for Play \n2. Insights/Opportunities\nStaff shared that their sales are low\nShared sales stories of ace and trained on ace\nShared sales stories of Roam 2 just happened\nTrained on Sonos Play \n\n4.training   \nAce yee pt \nRoam2 yee pt \nPlay yee pt\n\n\n5. Follow up build relationship\n TL Yee - Sonos \u2022 Play \u2022 Black, - TL Yee - Sonos \u2022 Roam 2 EU/UK/AU/IN \u2022 Black, - TL Yee - Sonos \u2022 Ace \u2022 Bl"}]}, {"store": "Fortress @ 438 Telford Gardens", "country": "HK", "tier": "Tier 1", "cm": "Ginger Kiang", "total_visits": 8, "last_visit": "11-Mar-2026", "days_ago": 7, "notes": [{"date": "20-Jan-2026", "text": "Outlet name:TL Telford \nClocked in on SVA:  yes\nMusic playing:\u2705 \n\n1. Good news\nStaff sold 2 era100 and a roam ytd \n2. Insights/Opportunities\nStaff shared recently the sales are low but he is very helpful to keep pushing on Sonos \nTrained him on the Sonos App\nTrained on arc ultra and ace \nbuzzed CNY promo \n\n3. Brand Execution  \n\n4.training   \nArc ultra O\nAce O build reltionship  TL  O - Sonos \u2022 Ace \u2022 Black, - TL  O - Sonos \u2022 Arc Ultra EU \u2022 Black"}, {"date": "28-Jan-2026", "text": "Outlet name: TechLife Telford\nClocked in on SVA:  yes\nMusic playing:\u2705\n\n1. Good news\nStaff can faithfully share his sales pitch and selling points of our products and what he thinks its the best selling point\n\n2. Insights/Opportunities\nStaff shared that recently is low hitting around  10 k\nShared that Spotify new update can help him to catch customers to buy sonos and why \nbuzz about CNY promo headphone / speaker even\nTrained on ace  and era100 \nAsked staff to hard push era100 and ace especially "}, {"date": "04-Feb-2026", "text": "Outlet name: techlife Telford\nClocked in on SVA:  yes\nMusic playing:\u2705\n\n1. Good news\nPt staff shared that the era 100 and Ace actually caught a lot crowd there\n\n2. Insights/Opportunities\nStaff need to attend a meeting, so he is not here will have a second visit this week \nTrained Era 100 for pt staff and hyped that CNY promo is extended and V day is coming \n\n4.training   \n\nRoam2 Era100 Pt  \n\n5. Follow up Build relationships Techlife Part time - Sonos \u2022 Era 100 UK \u2022 Black, - Techlife Part time - S"}, {"date": "02-Mar-2026", "text": "Outlet name: TL Telford\nClocked in on SVA:  yes\nMusic playing:\u2705\n\n1. Good news\nStaff sold Beam last week \n2. Insights/Opportunities\nStaff shared that speaker sales are low \nStaff shared that overall the Headphones sales are not very good but still got some sales this week are mainly selling xm6 mainly are young people\nShared few sales stories for encouraging them to sell Sonos and build returns customers \nTrained on era100  and Roam 2\n\n4.training   \nEra100 O\nRoam 2 O\nAce Sing \n\n5. Follow up build"}, {"date": "11-Mar-2026", "text": "Outlet name: TL Telford \nClocked in on SVA:  yes\nMusic playing:\u2705\n\n1. Good news\nStaff sold an Ace last week\n2. Insights/Opportunities\nStaff share his sales stories about selling Ace \nShared sales stories of ace and trained on ace\nTrained on multi room with era100 and Play \nStaff is very excited about we got new products and want the demo and keep asking about it \n\n4.training   \nEra100 O\nAce O\nPlay O\n\n\n5. Follow up build relationship TL  O - Sonos \u2022 Play \u2022 White, - TL  O - Sonos \u2022 Ace \u2022 Black, - T"}]}, {"store": "Fortress @ 484 Diamond Hill", "country": "HK", "tier": "Tier 2", "cm": "Ginger Kiang", "total_visits": 3, "last_visit": "11-Mar-2026", "days_ago": 7, "notes": [{"date": "08-Jan-2026", "text": "Outlet name: TL Diamond hill\nClocked in on SVA:  yes\nMusic playing: yes \n\n1. Good news\nNil\n\n2. Insights/Opportunities\nStaff was went out for pick up stock \nStaff shared that recently soundbar is very quiet but small speakers is doing ok via Wts \nHelped to clean the demo and updated the system \n\n3. Brand Execution  \n\n4.training  \n\n\n5. Follow up build relationship"}, {"date": "28-Jan-2026", "text": "Outlet name: TechLife Diamond hill\nClocked in on SVA:  yes\nMusic playing:\u2705\n\n1. Good news\nStaff is very faithful to sell and he said he will aim to sell 3 products this week\n\n2. Insights/Opportunities\nStaff shared that recently is low but some time they can sell ray or roam \nbuzz about CNY promo and shared about it is a chance that custumer to buy deco at home or buy a speaker for movie or music \n Shared that Valentine's Day is near by and it is a google option for gifting partner a speaker or he"}, {"date": "11-Mar-2026", "text": "Outlet name: TL diamond hill\nClocked in on SVA:  yes\nMusic playing:\u2705\n\n1. Good news\nStaff said he can give us space for Sonos era100 SL and he shared that he likes to sell pair of speaker\n \n2. Insights/Opportunities\nStaff shared that their sales are ok but mainly not speaker, they got around 10 speaker sales a month \nShared sales stories of ace and trained on ace\nShared sales stories of Roam 2 just happened\nTrained on Sonos Play and era100 sl\n\n4.training   \nAce gary\nRoam2 gary\nPlay gary\nEra100 sl"}]}, {"store": "Fortress @ 493 Elements", "country": "HK", "tier": "Tier 1", "cm": "Ginger Kiang", "total_visits": 2, "last_visit": "06-Mar-2026", "days_ago": 12, "notes": [{"date": "29-Jan-2026", "text": "Outlet name: TechLife Element\nClocked in on SVA:  yes\nMusic playing:\u2705\n\n1. Good news\nStaff keep playing music every day \n2. Insights/Opportunities\nStaff shared that recently is normal but not hitting the target \nShared that Spotify new update can help him to catch customers to buy sonos and why \nbuzz about CNY promo headphone / speaker even\nTrained on ace  and era100 \nAsked staff to hard push beam and ace especially this promo period \n\n4.training   \n\nBeam Jerry pt  \n\n5. Follow up build relationsh"}, {"date": "06-Mar-2026", "text": "Outlet name: TL Elements\nClocked in on SVA:  yes\nMusic playing:\u2705\n\n1. Good news\nNil \n\n2. Insights/Opportunities\nOnly pt staff today \nFind out one of the pt staff is Arc ultra+ sub3 user and he is also KEF XIO users he shared that he feels the sound is not enough but the app is the best ever\nGot his feedback and taught him true play\nShared about alexa and Ace sales stories \n\n4.training   \nArc ultra  pt\nAce pt\nEra 100 pt\n\n5. Follow up Build relationships TechLife Part Timer - Sonos \u2022 Arc Ultra EU \u2022"}]}, {"store": "Fortress @ 491 Olympian City 2", "country": "HK", "tier": "Tier 2", "cm": "Ginger Kiang", "total_visits": 2, "last_visit": "06-Mar-2026", "days_ago": 12, "notes": [{"date": "06-Feb-2026", "text": "Outlet name: TL olympian city \nClocked in on SVA:  yes\nMusic playing:\u2705\n\n1. Good news\nNew Pt time are willing to lean more about sonos and he is really enjoy using sonos \n \n2. Insights/Opportunities\nOnly pt staff here \nHe shared that the sale is normal  around 13k per day \nBut audio is not selling good \nHe loves Beam the most and he play music on it every working day \nTrained on Beam and Era100 also the app and the feature \nHype CNY and shared V day promo \n\n4.training   \nEra100 pt staff\nBeam pt s"}, {"date": "06-Mar-2026", "text": "Outlet name: TL Olympian City  \nClocked in on SVA:  yes\nMusic playing:\u2705\n\n1. Good news\nStaff sold Ray recently \n\n2. Insights/Opportunities\n\nStaff shared that recently the sales growth but mainly from action Cam \nStaff shared that their manager need them to move our space, then i checked with staff that after 2-3 weeks she can help to put Sonos back to the table top \nTrained pt staff on Era100 and Beam \nShared stories about smart home and selling Ace \n(Because i got a SH call, i went out for 15 mi"}]}, {"store": "Fortress @ 655 Tung Chung", "country": "HK", "tier": "Tier 1", "cm": "Ginger Kiang", "total_visits": 2, "last_visit": "06-Mar-2026", "days_ago": 12, "notes": [{"date": "30-Jan-2026", "text": "Outlet name: techlife Tung Chung\nClocked in on SVA:  yes\nMusic playing:\u2705\n\n1. Good news\nStaff sold beam ytd  \n\n2. Insights/Opportunities\nStaff share that their sales is low\nStaff shared that overall Sony xm6 are selling at 21 this week in whole TL is half of the normal sales\nShared that Spotify new update can help him to catch customers to buy sonos\nbuzz about CNY promo headphone / speaker even\nTrained on beam  and era100 \nAsked staff to hard push beam\n2 staff passed the test\n Replaced ace stand\n"}, {"date": "06-Mar-2026", "text": "Outlet name: TL Tung Chung \nClocked in on SVA:  yes\nMusic playing:\u2705\n\n1. Good news\nThe store have stocks now last time they cant get stock from warehouse \n\n2. Insights/Opportunities\nStaff is not in store when im in store \nI wts the staff and he shared\nsales is normal but audio is not very good, the new xm6 in ear is doing ok, mainly are selling action cam \nShared a training of Ace by msg \nHelped to clean the product and update all software\nDone Demo audit \nHelped to set up 1 more ipad for them to"}]}, {"store": "Fortress @ 220 City Plaza", "country": "HK", "tier": "Tier 1", "cm": "Ginger Kiang", "total_visits": 9, "last_visit": "02-Mar-2026", "days_ago": 16, "notes": [{"date": "20-Feb-2026", "text": "Outlet name: TL City plaza \nClocked in on SVA:  yes\nMusic playing:\u2705\n\n1. Good news\n\n2. Insights/Opportunities\nHelped to swap the system to new router \nDeployed incentives snacks for  both TechLife staff\nStaff shared that speaker sales are low \nTrained on Arc Ultra  shared that is fit for the middle class\nAnd shared some sales stories \n\n4.training   \nArc ultra lip \n\n5. Follow up build relationship TL Lip - Sonos \u2022 Arc Ultra EU \u2022 Black"}, {"date": "27-Feb-2026", "text": "utlet name: TL City plaza\nClocked in on SVA:  yes\nMusic playing:\u2705\n\n1. Good news\nThey are willing to try on the way i propose to break thr and get more sonos sales \n \n2. Insights/Opportunities\nStaff shared recently sales are low  and speaker sales is very low, from 16-28 Feb only having HKD 37000 but action cam is around HKD 200000\nShared sales stories and encourage him to sell more \nTrained in Era100 shared can tried to focus on function instead sound quality, cause those customer not care the s"}, {"date": "02-Mar-2026", "text": "Outlet name: TL city plaza \nClocked in on SVA:  yes\nMusic playing:\u274c\n\n1. Good news\n\n2. Insights/Opportunities\nStaff shared that they gas some issue in store and it is smelly a bit burnt smell \nWill come again tmr \n\n4.training build relationship"}]}, {"store": "Fortress @ 299 Times Square", "country": "HK", "tier": "Tier 1", "cm": "Ginger Kiang", "total_visits": 9, "last_visit": "02-Mar-2026", "days_ago": 16, "notes": [{"date": "24-Feb-2026", "text": "utlet name: TL Times square  \nClocked in on SVA:  yes\nMusic playing:\u2705\n\n1. Good news\nStaff keep pushing Sonos and he shared few sales stories \n\n2. Insights/Opportunities\nStaff shared that sales is low \nShared that i will have promotion and encourage him to keep contact \nStaff shared that All speaker can enjoy the KKBOX discount \nShared few sales stories to encourage them to keep sell \nTrained on era300 and ace \n\n4.training   \n\nEra300 Michael  \u660c\n Ace pt \n\n5. Follow up build relartion"}, {"date": "02-Mar-2026", "text": "Outlet name: TL Times Square\nClocked in on SVA:  yes\nMusic playing:\u2705\n\n1. Good news\nStaff loves using his arc at home and share his experience to me and considering to add a sub mini \n\n2. Insights/Opportunities\nDeployed incentives snacks for  both TechLife and TV departments staff \nStaff shared that their overall sales are ok \nStaff shared that last week Sony headphones are doing good, shared that actually Dolby Atmos is very fresh for custumer \nTrained on Arc Ultra  shared that is fit for the mi"}]}, {"store": "Fortress @ 672 New Ma On Shan", "country": "HK", "tier": "Tier 2", "cm": "Ginger Kiang", "total_visits": 2, "last_visit": "27-Feb-2026", "days_ago": 19, "notes": [{"date": "14-Jan-2026", "text": "Outlet name: TL Ma On shan\nClocked in on SVA:  yes\nMusic playing:\u2705 \n\n1. Good news\nStaff gave us good locations for demo \n\n2. Insights/Opportunities\nStaff is on leave \nHarry is new town plaza store manager and he is here today \nHe shared that last week he sold and arc ultra and beam and he shared about the story \nHelped to arrange stock and display \nStaff shared that last week New town plaza sales is behind but sonos is doing good\nStaff done the test \n3. Brand Execution  \n\n4.training  \nBeam Harry"}, {"date": "27-Feb-2026", "text": "Outlet name: TL  Ma On Shan \nClocked in on SVA:  yes\nMusic playing:\u2705\n\n1. Good news\n\n \n2. Insights/Opportunities\nStaff shared recently speaker sales are low \nShared sales stories and encourage him to sell more \nTrained in Era100\nShared Era100 is not just a speaker, its also a multi function device, it can be radio it can be smart home voice control\nTook a space for new products \n\n4.training   \nEra100 Tom \n\n5. Follow up build relationship ["}]}, {"store": "Fortress @ New Tai Po", "country": "HK", "tier": "Tier 2", "cm": "Ginger Kiang", "total_visits": 1, "last_visit": "27-Feb-2026", "days_ago": 19, "notes": [{"date": "27-Feb-2026", "text": "Outlet name: TL  Tai Po \nClocked in on SVA:  yes\nMusic playing:\u2705\n\n1. Good news\n\n \n2. Insights/Opportunities\nDeployed drinks \nStaff shared recently speaker sales are low  and mainly selling under 1k speaker \nShared sales stories and encourage him to sell more \nTrained in Era100\nTried to push to get a eye level location for era100 but cannot\nThere is a roam demo the sonos word broke need to fol up \n4.training   \nEra100 frank\n\n5. Follow up\nBroke roam demo build relation"}]}, {"store": "Fortress @ 478 Wai Fung Plaza", "country": "HK", "tier": "Tier 1", "cm": "Ginger Kiang", "total_visits": 3, "last_visit": "26-Feb-2026", "days_ago": 20, "notes": [{"date": "22-Jan-2026", "text": "Outlet name:Wai Fung\nClocked in on SVA:  yes\nMusic playing:\u2705\n\n1. Good news\nStaff loves ace so much\nThe network issue is solved \n\n2. Insights/Opportunities\nStaff shared that recently is ok but audio is quiet  \nbuzz about CNY promo and shared about why \nTrained on beam  and ace \n\n3. Brand Execution  \n\n4.training   \nBeam  staff \nAce staff \nBeam  pt staff5. Follow up build relationship  TechLife Part timer - Sonos \u2022 Beam (White), - TechLife Part timer - Sonos \u2022 Ace \u2022 Black, - TechLife Part timer - S"}, {"date": "26-Feb-2026", "text": "Outlet name: TL Wai Fung\nClocked in on SVA:  yes\nMusic playing:\u2705\n\n1. Good news\n\n2. Insights/Opportunities\nStaff shared recently sales are ok \nStaff shared overall Marshall got some portable speakers sales \nShared sales stories to encourage them to keep selling and earn return customers \nShared other store are also putting many afford to build up their customer group\nTrained on era100  \n\n4.training   \nChun era100 build relationship"}]}, {"store": "Fortress @ 413 Ocean Centre", "country": "HK", "tier": "Tier 1", "cm": "Ginger Kiang", "total_visits": 6, "last_visit": "26-Feb-2026", "days_ago": 20, "notes": [{"date": "29-Jan-2026", "text": "Outlet name: TechLife Ocean centre \nClocked in on SVA:  yes\nMusic playing:\u2705\n\n1. Good news\nStaff sold an Ace era100 this week \n2. Insights/Opportunities\nHelped to serve a custumer and sold a era300, this customer came early today and pt staff served them be fore also\nShared that Spotify new update can help him to catch customers to buy sonos and why \nbuzz about CNY promo headphone / speaker even\nTrained on ace  and era100 \nAsked staff to hard push beam and ace especially this promo period \nShared"}, {"date": "26-Feb-2026", "text": "Outlet name: TL Wai Fung\nClocked in on SVA:  yes\nMusic playing:\u2705\n\n1. Good news\n\n2. Insights/Opportunities\nStaff shared recently sales are ok \nStaff shared that  they only got  Chinese visitors recently \nStaff shared overall Marshall got some sales they mostly don't even try on the speakers \nShared that their speakers sales also dropping, he plans to give me 1 more space for Move2 \nTrained on era100 build relationsh"}]}, {"store": "Fortress @ 205 Melbourne Plaza", "country": "HK", "tier": "Tier 1", "cm": "Ginger Kiang", "total_visits": 9, "last_visit": "25-Feb-2026", "days_ago": 21, "notes": [{"date": "20-Feb-2026", "text": "Outlet name: TL Melbourne plaza \nClocked in on SVA:  yes\nMusic playing:\u2705\n\n1. Good news\nStaff sold 2 era 100 today \n\n2. Insights/Opportunities\nDeployed incentives snacks for  both TechLife and TV departments staff \nStaff shared that their overall sales are low but today is better \nStaff shared that last week our speakers sales are the best selling brand \nStaff shared that last week Bose headphones are doing good, mainly are current user to buy a new one \nTrained on Arc Ultra  shared that is fit f"}, {"date": "25-Feb-2026", "text": "Outlet name: TL Melbourne plaza\nClocked in on SVA:  yes\nMusic playing:\u2705\n\n1. Good news\nTv staff said their now not allow them to play movie and song but he allow me to play sound on the Arc ultra\n \n2. Insights/Opportunities\nStaff shared that their sales is not good, he said because of the office guy is not come back yet \nStaff asked me about move issue from customer and some tech issues, answered him and helped to solved alr \nStayed for a while and served 4-5 customers 2 are looking for earbuds a"}]}, {"store": "AV Life @ Shop No. B105", "country": "HK", "tier": "Tier 1", "cm": "Ginger Kiang", "total_visits": 2, "last_visit": "25-Feb-2026", "days_ago": 21, "notes": [{"date": "29-Jan-2026", "text": "Outlet name: Avlife k11 \nClocked in on SVA:  yes\nMusic playing:\u274c\n\n1. Good news\nStaff shared that he sold some era100 and Ace \n\n2. Insights/Opportunities\nStaff shared that the sales recently is low \nShared with staff that i helped to pair the era300 to a stereo pair \nStaff asked me to give him a movie trailer and sent to him and trained on arc ultra\nShared that Spotify new update can help him to catch customers to buy sonos and why \nbuzz about CNY promo headphone / speaker even\nTrained on ace  an"}, {"date": "25-Feb-2026", "text": "Outlet name: Avlife  K11\nClocked in on SVA:  yes\nMusic playing:\u274c\n\n1. Good news\nThey sold 4era300 and arc ultra last promo and today they got custumers asking 3 era300\n \n2. Insights/Opportunities\nStaff shared recently sales are low  \nStaff shared that he will go TM store in March \nStaff also shared that  there are more Store managers are shifted\nTrained on Era300  \n\n4.training   \nEra300 \u9f8d build relationship"}]}, {"store": "AV Life @ Times Square", "country": "TH", "tier": "Unknown", "cm": "Ginger Kiang", "total_visits": 4, "last_visit": "24-Feb-2026", "days_ago": 22, "notes": [{"date": "20-Jan-2026", "text": "Outlet name:Avlife  Times Square \nClocked in on SVA:  yes\nMusic playing:\u274c\n\n1. Good news\nStaff shared  he keep having some Era100 sales \n2. Insights/Opportunities\nStaff shared recently the sales are low \nshare diff sales stories, and also share sales pitch \nTrained on arc ultra, Ace and Beam and what is the adv compare woth other brands \nbuzz about CNY promo \n3. Brand Execution  \n\n4.training   \nArc ultra Leo\nBeam Leo\nAce Leo \n\n5. Follow up build relationship  Avlife  Leo - Sonos \u2022 Arc Ultra EU \u2022 "}, {"date": "24-Feb-2026", "text": "Outlet name: avlife Times square  \nClocked in on SVA:  yes\nMusic playing:\u274c\n\n1. Good news\n\n2. Insights/Opportunities\nStaff shared that sales are very slow and their boss dont allow them to sell products to CI \nShared that i will have promotion and encourage him to keep contact \nTrained on era300\n\n4.training   \n\nEra300 Leo \n \n\n5. Follow up build relationship"}]}, {"store": "AV Life @ SOGO Causeway Bay", "country": "HK", "tier": "Tier 1", "cm": "Ginger Kiang", "total_visits": 8, "last_visit": "24-Feb-2026", "days_ago": 22, "notes": [{"date": "11-Feb-2026", "text": "Outlet name: avlife sogo \nClocked in on SVA:  yes\nMusic playing:\u274c\n\n1. Good news\nNil\n \n2. Insights/Opportunities\nStaff shared that the sales recently are low  \nSony promoter shared that this month his tv item sales is below 10 \nHype of V day promo \nTrained on Move 2 shared that is fit for camping \nStaff are busying on the demo swapping, helped a bit them to move \n\n4.training   \nMove 2 \u52c7  \n\n5. Follow up build relationship Av Life  \u52c7 - Sonos \u2022 Move Gen 2 UK \u2022 Green"}, {"date": "24-Feb-2026", "text": "utlet name: avlife sogo \nClocked in on SVA:  yes\nMusic playing:\u274c\n\n1. Good news\n\n2. Insights/Opportunities\nStaff shared that sales are low in CNY periods \nStaff shared that they also got  customers are helping their frds to buy or their current customers introduce customers to them \nShared few sales stories for encouraging them to build returns customers \nTrained on era300\n\n4.training   \n\nEra300 \u6750\n \n\n5. Follow up build relationships"}]}, {"store": "AV Life @ Tsuen Wan Plaza", "country": "HK", "tier": "Tier 1", "cm": "Ginger Kiang", "total_visits": 2, "last_visit": "13-Feb-2026", "days_ago": 33, "notes": [{"date": "23-Jan-2026", "text": "Outlet name:avlife  Tsuen Wan Plaza\nClocked in on SVA:  yes\nMusic playing:\u274c\n\n1. Good news\nNil\n\n2. Insights/Opportunities\nStaff shared that recently is low \nStaff share that arc ultra keep having people to try on  \nbuzz about CNY promo and shared about why \nTrained on arc ultra  and era100 \n\n4.training   \nArc ultra   staff  staff\nEra 100 staff \n\n5. Follow up build relationship  Avlife \u5106 - Sonos \u2022 Arc Ultra EU \u2022 Black, - Avlife \u5106 - Sonos \u2022 Era 100 UK \u2022 Black, - Avlife  Staff - Sonos \u2022 Arc Ultra EU"}, {"date": "13-Feb-2026", "text": "Outlet name: avlife  Tsuen wan \nClocked in on SVA:  yes\nMusic playing:\u274c\n\n1. Good news\nStaff feels interesting, because only few headphone has dolby atmos \n\n2. Insights/Opportunities\nStaff shared that their overall sales are low \nHype of V day promo  and to day is last day \nTrained on Roam 2 shared that is fit for camping \nTrained on Ace and shared about Dolby atmos \nShared few stories \n\n4.training   \nMove 2 store manager \nAce staff   \n\n5. Follow up build relationship Avlife  Staff - Sonos \u2022 Move"}]}, {"store": "Fortress @ Tsuen Wan Plaza", "country": "HK", "tier": "Nil", "cm": "Ginger Kiang", "total_visits": 2, "last_visit": "13-Feb-2026", "days_ago": 33, "notes": [{"date": "13-Feb-2026", "text": "Outlet name: TL Tsuen wan \nClocked in on SVA:  yes\nMusic playing:\u2705\n\n1. Good news\nStaff feels roam 2 is powerful because of the auto true play and voice control \n\n2. Insights/Opportunities\nStaff shared that their speaker sales is dropping, mainly selling ear buds and smart glasses \nHype of V day promo  and to day is last day \nTrained on Roam 2 shared that is fit for camping \n\n4.training   \nMove 2 pt  \n\n5. Follow up Build relationships TechLife  Partimer - Sonos \u2022 Move Gen 2 UK \u2022 Black"}]}, {"store": "Fortress @ 633 The Wai", "country": "HK", "tier": "Unknown", "cm": "Ginger Kiang", "total_visits": 2, "last_visit": "13-Feb-2026", "days_ago": 33, "notes": [{"date": "13-Feb-2026", "text": "Outlet name: TL The Wai\nClocked in on SVA:  yes\nMusic playing:\u2705\n\n1. Good news\nStaff is excited when i deployed a small drink challenge for her, she targeted to sell 1 era300\n\n2. Insights/Opportunities\nStaff shared that their overall sales are low \nStaff shared that recently got some family customers buy Marshall \nHype of V day promo  and to day is last day \nTrained on Beam and era300\nStaff also shared what is the best feature of Sonos \nDeployed mini incentive \n\n4.training   \nBeam yoyo \nEra300 yo"}]}, {"store": "AV Life @ New Town Plaza", "country": "HK", "tier": "Tier 1", "cm": "Ginger Kiang", "total_visits": 3, "last_visit": "12-Feb-2026", "days_ago": 34, "notes": [{"date": "04-Feb-2026", "text": "Outlet name: Avlife  New Town Plaza \nClocked in on SVA:  yes\nMusic playing:\u274c\n\n1. Good news\nStaff sold an era300 this week  \n\n2. Insights/Opportunities\nStaff share that their overall sales is normal but they are very busy cause the store manager is quit \nbuzzed about  Vday we have  a promo and mainly focus on Roam and Ace \nHype that CNY promo is extended \nChecked Ace SN\nStaff gave us a good location for ace\nStaff are busy on their work today \n \n4.training   \n\n5. Follow up Build relationships"}, {"date": "12-Feb-2026", "text": "Outlet name: Avlife New Town Plaza\nClocked in on SVA:  yes\nMusic playing:\u274c\n\n1. Good news\nStaff is got a custumer looking for Sonos Arc ultra  \n \n2. Insights/Opportunities\nStaff shared that the sales recently are normal \nHype of V day promo \nShared few sales stories Trained on Move 2 shared that what kind of custumer are fit for Move 2 \n\n4.training   \nMove 2 Wun staff  \n\n5. Follow up Build relationships YCY Staff - Sonos \u2022 Move Gen 2 UK \u2022 White, - Avlife  woon - Sonos \u2022 Move Gen 2 UK \u2022 Black"}]}, {"store": "AV Life @ City Plaza", "country": "HK", "tier": "Tier 2", "cm": "Ginger Kiang", "total_visits": 2, "last_visit": "11-Feb-2026", "days_ago": 35, "notes": [{"date": "08-Jan-2026", "text": "Outlet name: avlife city plaza\nClocked in on SVA:  yes\nMusic playing: no\n\n1. Good news\nStaff bought an Sonos Ace \n\n2. Insights/Opportunities\nStaff shared that recently the sales is quiet  \nShared sales  stories about multi room and ultra \nShared ace and Tv sound swap \n\n3. Brand Execution  \n\n4.training  \nMove 2 Ken\nArc ultra Ken \nAce Ken\n\n\n5. Follow up Build relationships AV Life Ken - Sonos \u2022 Arc Ultra EU \u2022 Black, - AV Life Ken - Sonos \u2022 Ace \u2022 Black, - AV Life Ken - Sonos \u2022 Move Gen 2 UK \u2022 Black"}, {"date": "11-Feb-2026", "text": "Outlet name: Avlife City Plaza  \nClocked in on SVA:  yes\nMusic playing:\u274c\n\n1. Good news\nNil\n \n2. Insights/Opportunities\nStaff shared that the sales recently are ok \nStaff shared that recently lesser customers ask about Sonos compared with Christmas \nHype of V day promo \nShared few sales stories Trained on Move 2 shared that what kind of custumer are fit for Move 2 \n\n4.training   \nMove 2 Ken \n\n5. Follow up build relation ship AV Life Ken - Sonos \u2022 Move Gen 2 UK \u2022 Green"}]}, {"store": "AV Life @ East Point City (TKO)", "country": "HK", "tier": "Tier 1", "cm": "Ginger Kiang", "total_visits": 2, "last_visit": "10-Feb-2026", "days_ago": 36, "notes": [{"date": "16-Jan-2026", "text": "Outlet name: avlife tko  \nClocked in on SVA:  yes\nMusic playing:\u2705 \n\n1. Good news\nNil \n2. Insights/Opportunities\nStaff shared recently the sales are low \nI shared recently our sales is doing ok, and we are going to hv CNY promo \nShared about arc ultra is the best AIO soundbar\nStaff shared that roam 2 is out of stock and they missed some sales \n\n3. Brand Execution  \n\n4.training   \nArc ultra staff staff\n\n5. Follow up\nBring a small pos for them to lift up the beam build relationship Avlife  Staff - "}, {"date": "10-Feb-2026", "text": "build relationship"}]}, {"store": "AV Life @ Olympian City", "country": "HK", "tier": "Tier 3", "cm": "Ginger Kiang", "total_visits": 1, "last_visit": "06-Feb-2026", "days_ago": 40, "notes": [{"date": "06-Feb-2026", "text": "Outlet name: avlife  olympian city \nClocked in on SVA:  yes\nMusic playing:\u274c\n\n1. Good news\nNil\n \n2. Insights/Opportunities\nStaff shared that the sales is normal recently \nStaff shared that promotion didn't draw them crowd , i shared with them that their store manager actually called me for check stock\nHype of CNY extend and V day promo \nShared that Spotify connect is available now and its support 24 bit streaming\n\n\n4.training   \n\n5. Follow up Build relationships"}]}, {"store": "AV Life @ Wong Chuk Hang", "country": "HK", "tier": "Unknown", "cm": "Ginger Kiang", "total_visits": 3, "last_visit": "06-Feb-2026", "days_ago": 40, "notes": [{"date": "07-Jan-2026", "text": "Outlet name: avlife Wong Chuk Hang \nClocked in on SVA:  yes\nMusic playing: nah\n\n1. Good news\nStaff gave to good location for us to show the era300 stereo pair\n2. Insights/Opportunities\nStaff shared that recently the sales is quiet \nShared a sales  stories about Move 2 and multi room \nShared era100 vs era300\nTrained on Move 2 and era300\nStaff shared that actually they are mainly selling products China customer who live near by \n\n3. Brand Execution  \n\n4.training  \nMove 2 derek dereck \nEra300 derec"}, {"date": "06-Feb-2026", "text": "Outlet name: Avlife  Wong Chuk Hang\nClocked in on SVA:  yes\nMusic playing:\u274c\n\n1. Good news\nStaff is interested in our product, when having training he kept asking question \n\n2. Insights/Opportunities\nStaff share that their overall sales very low \nbuzzed about  Vday we have  a promo and mainly focus on Roam and Ace \nHype that CNY promo is extended \nCollected the Ace POS \nTrained on Arc ultra and sonos app \n\n4.training   \nFai arc ultra \n\n5. Follow up Build relationships Avlife  Fai Gor  - Sonos \u2022 A"}]}, {"store": "Fortress @ Tsing Yi", "country": "HK", "tier": "Tier 1", "cm": "Ginger Kiang", "total_visits": 1, "last_visit": "06-Feb-2026", "days_ago": 40, "notes": [{"date": "06-Feb-2026", "text": "Outlet name: TL Tsung Yi\nClocked in on SVA:  yes\nMusic playing:\u2705\n\n1. Good news\nFtr pt staff come to ask me question about Sonos \n\n2. Insights/Opportunities\nNo staff and pt staff here today, only FTR pt staff here \nAnswered staff questions \nTrained on era 100 and beam \nAlso taught him how to use the app \n\n4.training   \nEra100 pt staff 2nd\nBeam pt staff \n\n5. Follow up Build relationships TechLife  Partimer - Sonos \u2022 Beam (Black), - TechLife  Partimer - Sonos \u2022 Era 100 UK \u2022 White"}]}, {"store": "Fortress @ APM", "country": "HK", "tier": "Tier 1", "cm": "Ginger Kiang", "total_visits": 2, "last_visit": "06-Feb-2026", "days_ago": 40, "notes": [{"date": "30-Dec-2025", "text": "Outlet name: TL Telford  \nClocked in on SVA:  yes\n\n1. Good news\nStaff are very helpful \n\n\n2. Insights/Opportunities\n\nStaff shared that recently the sales are ok but mainly are selling action cam and  blind box\nStaff shared recently audio are selling slow especially earphone \nShared with staff about how to convert speaker to soundbar \nShared sales story and trained on era 100 and Ace \n\n3. Brand Execution  \n\n4.training  \nAce  pt frankie \nEra100 pt frankie\nBeam pt build relationship Techlife Franki"}, {"date": "06-Feb-2026", "text": "Outlet name: TL APM\nClocked in on SVA:  yes\nMusic playing:\u2705\n\n1. Good news\nStaff shared that they sometimes has Ace sales \n \n2. Insights/Opportunities\nStaff shared that recently the speaker are selling very slow , only 500-700 speaker can sell\nShe shared that lesser return customer now, i shared that it need to be build up and ask her to try to sell 1 pcs every week \n\nShared sales stories about how i sold an Ace ytd and how our promoter sold 18pcs era100 \nHype staff about Vday and CNY promo exten"}]}, {"store": "Fortress @ 661 Tuen Mun Town Plaza", "country": "HK", "tier": "Tier 2", "cm": "Ginger Kiang", "total_visits": 1, "last_visit": "30-Jan-2026", "days_ago": 47, "notes": [{"date": "30-Jan-2026", "text": "Outlet name: techlife TMT\nClocked in on SVA:  yes\nMusic playing:\u2705\n\n1. Good news\nStaff sold ace this week\n\n2. Insights/Opportunities\nStaff share that their sales is low\nShared that Spotify new update can help him to catch customers to buy Sonos especially android \nAnswered questions from staff for his own beam set\nbuzz about CNY promo headphone / speaker even\nTrained on ace  and era100 \nAsked staff to hard push beam\n1 staff passed the test\n \n4.training   \n\nAce eagle\nEra100 jerry   \n\n5. Follow up "}]}, {"store": "AV Life @ TM", "country": "HK", "tier": "Tier 3", "cm": "Ginger Kiang", "total_visits": 1, "last_visit": "30-Jan-2026", "days_ago": 47, "notes": [{"date": "30-Jan-2026", "text": "Outlet name: Avlife  TM\nClocked in on SVA:  yes\nMusic playing:\u274c\n\n1. Good news\nPt Staff recently has sold an arc ultra set\n\n2. Insights/Opportunities\nStaff share that their sales is low\nShared that Spotify new update can help him to catch customers to buy sonos\nbuzz about CNY promo headphone / speaker even\nTrained on ace  and era100 \nAsked staff to hard push era 100\n \n4.training   \n\nBeam staff \nEra100 staff\n\n5. Follow up build relationship    AV Life Wai - Sonos \u2022 Beam (Black), -   AV Life Wai - "}]}, {"store": "Fortress @ 680 Yoho Town", "country": "HK", "tier": "Nil", "cm": "Ginger Kiang", "total_visits": 1, "last_visit": "30-Jan-2026", "days_ago": 47, "notes": [{"date": "30-Jan-2026", "text": "Outlet name: TechLife Yoho\nClocked in on SVA:  yes\nMusic playing:\u2705\n\n1. Good news\nPt Staff got trained well and he remember most of the selling point \n\n2. Insights/Opportunities\nNo ft staff here and pt only stay here today \nShared that Spotify new update can help him to catch customers to buy sonos and why and tried the function with him\nbuzz about CNY promo headphone / speaker even\nTrained on ace  and era100 \n\nAsked staff to hard push beam\n \n4.training   \n\nBeam  pt\nEra100 pt\n\n5. Follow up build "}]}, {"store": "Fortress @ 488 Whampoa Garden", "country": "HK", "tier": "Tier 2", "cm": "Ginger Kiang", "total_visits": 1, "last_visit": "22-Jan-2026", "days_ago": 55, "notes": [{"date": "22-Jan-2026", "text": "Outlet name:TechLife Whampoa\nClocked in on SVA:  yes\nMusic playing:\u274c\n\n1. Good news\nStaff sold 2 era 100 ytd \n2. Insights/Opportunities\nStore manager cannot let them play music at the moment \nStaff shared their sales overall is bad but on Monday he got a customer are looking for speaker \nTrained on arc ultra and shared its the best AIO soundbar \nShared of Era100 vs soundbar \nbuzz about CNY promo \n\n3. Brand Execution  \n\n4.training   \nArc ultra pt mo \nEra 100 pt mo  \n\n5. Follow up build relationshi"}]}, {"store": "Radio Unison Company Limited", "country": "HK", "tier": "Tier 1", "cm": "Ginger Kiang", "total_visits": 1, "last_visit": "22-Jan-2026", "days_ago": 55, "notes": [{"date": "22-Jan-2026", "text": "Outlet name:Radio Unison \nClocked in on SVA:  yes\nMusic playing:\u274c\n\n1. Good news\nNil \n\n2. Insights/Opportunities\nStaff shared that recently is quiet \nHe suggested some different ways that he think it could help us to boost our sales \nbuzz about CNY promo and shared about why \nAlso share a bit arc ultra and ace \n3. Brand Execution  \n\n4.training   \nAce staff \n\n5. Follow up build relationship  RU Fu - Sonos \u2022 Ace \u2022 Black"}]}, {"store": "Fortress @ 497 Golden Computer Centre", "country": "HK", "tier": "Unknown", "cm": "Ginger Kiang", "total_visits": 1, "last_visit": "16-Jan-2026", "days_ago": 61, "notes": [{"date": "16-Jan-2026", "text": "Outlet name: FTR Golden Centre \nClocked in on SVA:  yes\nMusic playing:\u2705\n\n1. Good news\nStaff is very impressed by the sales stories i shared and he also shared that his sales stories \n1 of the pt staff bought a Era100 and he love to use it because high sound quality \n\n2. Insights/Opportunities\nStaff shared that recently the sales is bad because the crowd is low \nTrained on era100 and multi room\nTrained the difference between  stereo, surround and dolby atmos \nHype of CNY promo and shared why we h"}]}, {"store": "AV Life @ Lok Fu Plaza", "country": "HK", "tier": "Tier 3", "cm": "Ginger Kiang", "total_visits": 1, "last_visit": "16-Jan-2026", "days_ago": 61, "notes": [{"date": "16-Jan-2026", "text": "Outlet name: Avlife Lok fu  \nClocked in on SVA:  yes\nMusic playing:\u274c\n\n1. Good news\nNil\n2. Insights/Opportunities\nStaff shared that recently the sales is bad but in the end of the month they will have a 90% off every 1 k \nShared that customer recently love to buy AIO soundbar and Arc ultra is fit for them \nHyped about CNY\n\n3. Brand Execution  \n\n4.training  \n\nArc ultra dereck\n\n5. Follow up build relationship YCY Derek - Sonos \u2022 Arc Ultra EU \u2022 Black"}]}, {"store": "Cosmic Tech @ Sham Shui Po", "country": "HK", "tier": "Tier 3", "cm": "Ginger Kiang", "total_visits": 1, "last_visit": "16-Jan-2026", "days_ago": 61, "notes": [{"date": "16-Jan-2026", "text": "Outlet name: CosmicTech SSP\nClocked in on SVA:  yes\nMusic playing:\u274c\n\n1. Good news\nStaff is very looking forward to forward to having Promotions \nShared a bit but didn't confirm them, i think i can confirm her next week and ask for PO\n\n2. Insights/Opportunities\nStaff shared that recently the sales is bad because the crowd is low \nTrained on Ace and Dolby Atmos vs 3D audio\n\n\nStaff ask me for a product list, they want to sell under the table, i replied that i have to check \n\n3. Brand Execution  \n\n4"}]}, {"store": "Fortress @ Popcorn 2", "country": "HK", "tier": "Tier 1", "cm": "Ginger Kiang", "total_visits": 1, "last_visit": "16-Jan-2026", "days_ago": 61, "notes": [{"date": "16-Jan-2026", "text": "Outlet name: TL Pop corn \nClocked in on SVA:  yes\nMusic playing:\u2705 \n\n1. Good news\nStaff have 2 era 100 at home and considering to buy a Beam or Ray, i shared with him that we will have promo soon\n\n2. Insights/Opportunities\nPt Staff shared that most of the customers are asking Ray here \nThe slaes is low \nThere is a apple promoter is very familiar with sonos system and sometime he will help to sell too \nTrained on app ray beam and multi room \n\n3. Brand Execution  \n\n4.training  \nRay pt staff \nBeam f"}]}];
+
+// ── State ────────────────────────────────────────────────────────────────────
+const analysed = {};   // store_name → analysis result
+const loading = new Set();
+let activeFilter = 'all';
+let selectedStore = null;
+let analysisQueue = [];
+let analysisRunning = false;
+
+// ── Claude API call ──────────────────────────────────────────────────────────
+const SYSTEM = `You are a retail intelligence analyst for TC Acoustic (distributor of Sonos, Marshall, Bowers & Wilkins, LG). Analyse Channel Manager store visit notes and return ONLY valid JSON with no markdown.
+
+Return exactly:
+{"stock_status":"green"|"amber"|"red","stock_summary":"1 sentence","stock_skus_at_risk":[],"momentum":"up"|"flat"|"down","momentum_summary":"1 sentence","competitor_threats":[],"competitor_level":"none"|"low"|"high","training_gaps":[],"training_urgency":"none"|"low"|"high","key_insight":"1 actionable sentence for the AM","recommended_action":"1 specific action","staff_relationship":"cold"|"warm"|"strong","overall_health":"at-risk"|"watch"|"healthy"|"strong"}
+
+Rules: stock red=any SKU at 0 or critically low; amber=some low; green=healthy. Competitor threats=only concrete observations. Be specific and direct. If no evidence return [] or "none".`;
+
+async function analyseStore(storeData) {
+  const notesText = storeData.notes.map(n => `[${n.date}] ${n.text}`).join('\n\n');
+  const prompt = `Store: ${storeData.store}\nCountry: ${storeData.country} | Tier: ${storeData.tier} | Visits: ${storeData.total_visits}\nLast visit: ${storeData.last_visit}\n\n${notesText}`;
+
+  const resp = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'x-api-key': API_KEY, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
+    body: JSON.stringify({
+      model: 'claude-sonnet-4-20250514',
+      max_tokens: 600,
+      system: SYSTEM,
+      messages: [{ role: 'user', content: prompt }]
+    })
+  });
+
+  if (!resp.ok) throw new Error(`API ${resp.status}`);
+  const data = await resp.json();
+  let text = data.content[0].text.trim();
+  if (text.startsWith('```')) { text = text.split('```')[1]; if (text.startsWith('json')) text = text.slice(4); }
+  return JSON.parse(text.trim());
+}
+
+// ── Analysis queue runner ─────────────────────────────────────────────────────
+async function runQueue() {
+  if (analysisRunning) return;
+  analysisRunning = true;
+  while (analysisQueue.length > 0) {
+    const storeName = analysisQueue.shift();
+    const storeData = STORES_RAW.find(s => s.store === storeName);
+    if (!storeData || analysed[storeName]) continue;
+    loading.add(storeName);
+    renderGrid();
+    try {
+      const result = await analyseStore(storeData);
+      result.store_name = storeName;
+      result.country = storeData.country;
+      result.tier = storeData.tier;
+      result.cm = storeData.cm;
+      result.total_visits = storeData.total_visits;
+      result.last_visit = storeData.last_visit;
+      result.days_ago = storeData.days_ago;
+      analysed[storeName] = result;
+    } catch(e) {
+      analysed[storeName] = {
+        store_name: storeName, country: storeData.country, tier: storeData.tier,
+        cm: storeData.cm, total_visits: storeData.total_visits, last_visit: storeData.last_visit,
+        days_ago: storeData.days_ago, overall_health: 'watch', stock_status: 'amber',
+        stock_summary: 'Analysis pending', stock_skus_at_risk: [], momentum: 'flat',
+        momentum_summary: 'Analysis pending', competitor_threats: [], competitor_level: 'none',
+        training_gaps: [], training_urgency: 'none', key_insight: 'Check raw visit notes',
+        recommended_action: 'Review manually', staff_relationship: 'warm'
+      };
+    }
+    loading.delete(storeName);
+    renderGrid();
+    updateSummary();
+    await new Promise(r => setTimeout(r, 300));
+  }
+  analysisRunning = false;
+}
+
+// ── Rendering ─────────────────────────────────────────────────────────────────
+function healthBadgeClass(h) {
+  return { strong: 'hb-strong', healthy: 'hb-healthy', watch: 'hb-watch', 'at-risk': 'hb-at-risk' }[h] || 'hb-watch';
+}
+function healthLabel(h) {
+  return { strong: 'STRONG', healthy: 'HEALTHY', watch: 'WATCH', 'at-risk': 'AT RISK' }[h] || 'WATCH';
+}
+function momentumClass(m) {
+  return { up: 'mom-up', flat: 'mom-flat', down: 'mom-down' }[m] || 'mom-flat';
+}
+function momentumIcon(m) {
+  return { up: '↑', flat: '→', down: '↓' }[m] || '→';
+}
+
+function getSignals(r) {
+  const sigs = [];
+  if (!r) return sigs;
+  if (r.stock_status === 'red') sigs.push(['🔴 Stock critical', 'sig-red']);
+  else if (r.stock_status === 'amber') sigs.push(['🟡 Stock watch', 'sig-amber']);
+  if (r.competitor_level === 'high') sigs.push(['⚡⚡ Competitor', 'sig-purple']);
+  else if (r.competitor_level === 'low') sigs.push(['⚡ Competitor', 'sig-purple']);
+  if (r.training_urgency === 'high') sigs.push(['📚 Training urgent', 'sig-blue']);
+  else if (r.training_urgency === 'low') sigs.push(['📚 Training', 'sig-blue']);
+  if (r.momentum === 'up') sigs.push(['📈 Momentum up', 'sig-green']);
+  else if (r.momentum === 'down') sigs.push(['📉 Declining', 'sig-red']);
+  return sigs;
+}
+
+function sortOrder(h) {
+  return { 'at-risk': 0, watch: 1, healthy: 2, strong: 3 }[h] ?? 1;
+}
+
+function getDisplayStores() {
+  const searchVal = document.getElementById('search-input').value.toLowerCase();
+  const sortVal = document.getElementById('sort-select').value;
+
+  let stores = STORES_RAW.filter(s => {
+    if (searchVal && !s.store.toLowerCase().includes(searchVal)) return false;
+    if (activeFilter === 'all') return true;
+    const r = analysed[s.store];
+    if (!r) return true; // show unanalysed in all views
+    if (activeFilter === 'at-risk') return r.overall_health === 'at-risk';
+    if (activeFilter === 'watch') return r.overall_health === 'watch';
+    if (activeFilter === 'healthy') return r.overall_health === 'healthy' || r.overall_health === 'strong';
+    if (activeFilter === 'training') return r.training_urgency !== 'none';
+    if (activeFilter === 'competitor') return r.competitor_level !== 'none';
+    return true;
+  });
+
+  stores.sort((a, b) => {
+    const ra = analysed[a.store], rb = analysed[b.store];
+    if (sortVal === 'risk') {
+      const ha = ra ? sortOrder(ra.overall_health) : 1;
+      const hb = rb ? sortOrder(rb.overall_health) : 1;
+      if (ha !== hb) return ha - hb;
+      return a.days_ago - b.days_ago;
+    }
+    if (sortVal === 'recent') return a.days_ago - b.days_ago;
+    if (sortVal === 'stale') return b.days_ago - a.days_ago;
+    if (sortVal === 'alpha') return a.store.localeCompare(b.store);
+    return 0;
+  });
+
+  return stores;
+}
+
+function renderGrid() {
+  const stores = getDisplayStores();
+  const grid = document.getElementById('store-grid');
+  const empty = document.getElementById('empty-state');
+
+  if (stores.length === 0) {
+    grid.innerHTML = '';
+    empty.style.display = 'block';
+    return;
+  }
+  empty.style.display = 'none';
+
+  grid.innerHTML = stores.map(s => {
+    const r = analysed[s.store];
+    const isLoading = loading.has(s.store);
+    const isSelected = selectedStore === s.store;
+
+    if (isLoading) {
+      return `<div class="store-card ${isSelected?'selected':''}">
+        <div class="card-header"><span class="card-store-name">${s.store}</span></div>
+        <div class="card-meta">${s.country} · ${s.tier} · ${s.total_visits} visit${s.total_visits !== 1?'s':''}</div>
+        <div class="card-loading"><div class="spinner"></div><span class="loading-text">Analysing visit notes…</span></div>
+      </div>`;
+    }
+
+    if (!r) {
+      return `<div class="store-card ${isSelected?'selected':''}" onclick="selectStore('${s.store.replace(/'/g,"\\'")}')" >
+        <div class="card-header"><span class="card-store-name">${s.store}</span><span class="health-badge hb-watch" style="opacity:0.4">—</span></div>
+        <div class="card-meta">${s.country} · ${s.tier} · ${s.total_visits} visit${s.total_visits!==1?'s':''} · Last: ${s.last_visit}</div>
+        <div class="card-loading" style="color:var(--color-text-tertiary);padding:10px 16px 14px;font-size:12px;color:#6E6E73">Queued for analysis…</div>
+      </div>`;
+    }
+
+    const sigs = getSignals(r);
+    const momClass = momentumClass(r.momentum);
+    const momIcon = momentumIcon(r.momentum);
+
+    return `<div class="store-card ${isSelected?'selected':''}" onclick="selectStore('${s.store.replace(/'/g,"\\'")}')" >
+      <div class="card-header">
+        <span class="card-store-name">${s.store}</span>
+        <span class="health-badge ${healthBadgeClass(r.overall_health)}">${healthLabel(r.overall_health)}</span>
+      </div>
+      <div class="card-meta">${r.country} · ${r.tier} · ${r.total_visits} visit${r.total_visits!==1?'s':''} · Last: ${r.last_visit}</div>
+      ${sigs.length ? `<div class="card-signals">${sigs.map(([l,c])=>`<span class="sig ${c}">${l}</span>`).join('')}</div>` : ''}
+      <div class="card-divider"></div>
+      <div class="card-insight">
+        <div class="insight-label">Key insight</div>
+        <div class="insight-text"><span class="${momClass}">${momIcon}</span> ${r.key_insight}</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function updateSummary() {
+  const results = Object.values(analysed);
+  const risk = results.filter(r => r.overall_health === 'at-risk').length;
+  const watch = results.filter(r => r.overall_health === 'watch').length;
+  const healthy = results.filter(r => r.overall_health === 'healthy' || r.overall_health === 'strong').length;
+
+  document.getElementById('s-risk').textContent = risk || '—';
+  document.getElementById('s-watch').textContent = watch || '—';
+  document.getElementById('s-healthy').textContent = healthy || '—';
+  document.getElementById('s-analysed').textContent = results.length;
+
+  const alertBadge = document.getElementById('alert-badge');
+  if (risk > 0) {
+    alertBadge.style.display = 'block';
+    alertBadge.textContent = `${risk} at risk`;
+  }
+}
+
+// ── Filters ───────────────────────────────────────────────────────────────────
+function setFilter(f, el) {
+  activeFilter = f;
+  document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
+  el.classList.add('active');
+  renderGrid();
+}
+
+function applyFilters() { renderGrid(); }
+
+// ── Detail panel ──────────────────────────────────────────────────────────────
+function selectStore(name) {
+  selectedStore = name;
+  const r = analysed[name];
+  const raw = STORES_RAW.find(s => s.store === name);
+
+  document.getElementById('dp-store-name').textContent = name;
+  document.getElementById('dp-meta').textContent = `${raw.country} · ${raw.tier} · CM: ${raw.cm} · ${raw.total_visits} visits · Last: ${raw.last_visit}`;
+
+  const body = document.getElementById('dp-body');
+  const actions = document.getElementById('dp-actions');
+
+  if (!r || loading.has(name)) {
+    body.innerHTML = `<div style="padding:20px;text-align:center;color:#6E6E73;font-size:13px">Analysing…</div>`;
+    actions.innerHTML = '';
+  } else {
+    const momIcon = momentumIcon(r.momentum);
+    const momClass = momentumClass(r.momentum);
+
+    body.innerHTML = `
+      <div class="dp-highlight">
+        <div class="label">Key insight</div>
+        <div class="value">${r.key_insight}</div>
+      </div>
+      <div class="dp-highlight">
+        <div class="label">Recommended action</div>
+        <div class="value"><strong>${r.recommended_action}</strong></div>
+      </div>
+
+      <div class="dp-section">
+        <div class="dp-section-title">Sales momentum</div>
+        <div class="dp-item"><span class="${momClass}">${momIcon} ${r.momentum.toUpperCase()}</span> — ${r.momentum_summary}</div>
+      </div>
+
+      <div class="dp-section">
+        <div class="dp-section-title">Stock health — ${r.stock_status.toUpperCase()}</div>
+        <div class="dp-item">${r.stock_summary}</div>
+        ${r.stock_skus_at_risk.length ? r.stock_skus_at_risk.map(sku => `<div class="dp-item" style="color:#991B1B">⚠ ${sku}</div>`).join('') : '<div class="dp-item empty">No SKUs flagged at risk</div>'}
+      </div>
+
+      <div class="dp-section">
+        <div class="dp-section-title">Competitor activity — ${r.competitor_level.toUpperCase()}</div>
+        ${r.competitor_threats.length ? r.competitor_threats.map(t => `<div class="dp-item">⚡ ${t}</div>`).join('') : '<div class="dp-item empty">No competitor threats flagged</div>'}
+      </div>
+
+      <div class="dp-section">
+        <div class="dp-section-title">Training gaps — ${r.training_urgency.toUpperCase()}</div>
+        ${r.training_gaps.length ? r.training_gaps.map(g => `<div class="dp-item">📚 ${g}</div>`).join('') : '<div class="dp-item empty">No training gaps flagged</div>'}
+      </div>
+
+      <div class="dp-section">
+        <div class="dp-section-title">Recent visit notes</div>
+        ${raw.notes.slice(-3).reverse().map(n => `<div class="dp-item"><strong>${n.date}</strong><br><span style="white-space:pre-line;color:#3C3C43">${n.text.slice(0,300)}${n.text.length>300?'…':''}</span></div>`).join('')}
+      </div>
+    `;
+
+    actions.innerHTML = `
+      <button class="dp-btn dp-btn-primary" onclick="copyBrief('${name.replace(/'/g,"\\'")}')">📋 Copy pre-call brief</button>
+      <button class="dp-btn" onclick="copyInsights('${name.replace(/'/g,"\\'")}')">Copy key insights</button>
+    `;
+  }
+
+  document.getElementById('detail-overlay').classList.add('open');
+  renderGrid();
+}
+
+function closeDetail(e) {
+  if (e.target === document.getElementById('detail-overlay')) closeDetailPanel();
+}
+function closeDetailPanel() {
+  selectedStore = null;
+  document.getElementById('detail-overlay').classList.remove('open');
+  renderGrid();
+}
+
+function copyBrief(name) {
+  const r = analysed[name];
+  if (!r) return;
+  const momIcon = momentumIcon(r.momentum);
+  const text = `PRE-CALL BRIEF — ${name}
+Generated: ${new Date().toLocaleDateString('en-GB', {day:'numeric',month:'short',year:'numeric'})}
+CM: ${r.cm} | Last visit: ${r.last_visit} | ${r.total_visits} visits on record
+
+OVERALL: ${r.overall_health.toUpperCase()}
+
+KEY INSIGHT
+${r.key_insight}
+
+RECOMMENDED ACTION
+${r.recommended_action}
+
+SALES MOMENTUM: ${momIcon} ${r.momentum.toUpperCase()}
+${r.momentum_summary}
+
+STOCK: ${r.stock_status.toUpperCase()}
+${r.stock_summary}
+${r.stock_skus_at_risk.length ? 'At risk: ' + r.stock_skus_at_risk.join(', ') : ''}
+
+COMPETITOR ACTIVITY: ${r.competitor_level.toUpperCase()}
+${r.competitor_threats.length ? r.competitor_threats.join('\n') : 'None flagged'}
+
+TRAINING GAPS: ${r.training_urgency.toUpperCase()}
+${r.training_gaps.length ? r.training_gaps.join('\n') : 'None flagged'}`.trim();
+
+  navigator.clipboard.writeText(text).then(() => {
+    const btn = document.querySelector('.dp-btn-primary');
+    const orig = btn.textContent;
+    btn.textContent = '✓ Copied!';
+    setTimeout(() => btn.textContent = orig, 2000);
+  });
+}
+
+function copyInsights(name) {
+  const r = analysed[name];
+  if (!r) return;
+  const text = `${name}: ${r.key_insight} → ${r.recommended_action}`;
+  navigator.clipboard.writeText(text).then(() => {
+    const btns = document.querySelectorAll('.dp-btn');
+    if (btns[1]) { const orig = btns[1].textContent; btns[1].textContent = '✓ Copied!'; setTimeout(() => btns[1].textContent = orig, 2000); }
+  });
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+function init() {
+  renderGrid();
+  updateSummary();
+  // Queue all stores for analysis
+  analysisQueue = STORES_RAW.map(s => s.store);
+  runQueue();
+}
+
+init();
+</script>
+</body>
+</html>
